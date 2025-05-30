@@ -1,7 +1,23 @@
 # API de tarefas (*to-do list*)
 
+Projeto desenvolvido com o propósito de aprendizado.
 
+## Para rodar
+
+Dentro do ambiente virtualizado, instalar as seguintes dependências:
+```bash
+pip install fastapi "uvicorn[standard]" "python-jose[cryptography]" "passlib[bcrypt]" python-multipart pydantic-settings
+
+# Para os testes unitários
+pip install pytest pytest-cov httpx
+
+# Para o banco de dados
+pip install sqlalchemy "databases[postgresql]"
+```
 ## Estrutura do projeto
+
+Criada para facilitar a manutenção e escalabilidade.
+
 ```
 todo_api/
 ├── app/                  # Código principal da aplicação
@@ -15,12 +31,8 @@ todo_api/
 ├── tests/                # Testes unitários
 ├── Dockerfile            # Configuração do Docker
 ├── requirements.txt      # Dependências
-└── .env                  # Variáveis de ambiente
+└── .venv                  # Variáveis de ambiente
 ```
-```bash
-pip install fastapi "uvicorn[standard]" "python-jose[cryptography]" "passlib[bcrypt]" python-multipart pydantic-settings
-# Para os testes unitários
-pip install pytest pytest-cov httpx
-```
+
 
 
