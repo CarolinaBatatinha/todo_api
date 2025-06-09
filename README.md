@@ -6,13 +6,13 @@ Projeto desenvolvido com o propósito de aprendizado.
 
 Dentro do ambiente virtualizado, instalar as seguintes dependências:
 ```bash
-pip install fastapi "uvicorn[standard]" "python-jose[cryptography]" "passlib[bcrypt]" python-multipart pydantic-settings
+pip install fastapi 'uvicorn[standard]' 'python-jose[cryptography]' 'passlib[bcrypt]' python-multipart pydantic-settings
 
 # Para os testes unitários
 pip install pytest pytest-cov httpx
 
 # Para o banco de dados
-pip install sqlalchemy "databases[postgresql]"
+pip install sqlalchemy 'databases[postgresql]'
 ```
 ## Estrutura do projeto
 

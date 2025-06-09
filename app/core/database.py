@@ -1,70 +1,82 @@
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-from databases import Database
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
+from app.routes import auth, todos
+from app.core.database import create_tables, check_db_connection
 from app.core.config import settings
 
-# URL do banco de dados a partir das configurações
-DATABASE_URL = settings.DATABASE_URL
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Handler do ciclo de vida da aplicação:
+    - Cria tabelas no startup
+    - Executa limpeza no shutdown (se necessário)
+    """
+    print("Iniciando aplicação...")
+    await create_tables()
+    
+    # Verifica conexão com o banco
+    if not await check_db_connection():
+        raise RuntimeError("Falha na conexão com o banco de dados")
+    
+    yield
+    
+    print("Encerrando aplicação...")
+    # Adicione aqui qualquer lógica de limpeza necessária
 
-# Criação do engine do SQLAlchemy (para coperações síncronas, como criação de tabelas)
-engine = create_engine (
-    DATABASE_URL,
-    pool_size=20,  # Número de conexões mantidas no pool
-    max_overflow=10,  # Número máximo de conexões além do pool_size
-    pool_pre_ping=True,  # Verifica a conexão antes de usá-la
-    pool_recycle=3600  # Recicla conexões após 1 hora
+app = FastAPI(
+    title=settings.PROJECT_NAME,
+    description=settings.PROJECT_DESCRIPTION,
+    version=settings.VERSION,
+    lifespan=lifespan,
+    docs_url="/docs",  # Habilita Swagger UI em /docs
+    #redoc_url="/redoc",  # Habilita ReDoc em /redoc
+    openapi_url="/openapi.json"  # Endpoint para OpenAPI schema
 )
 
-# Session local para operações síncronas
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+# Configuração de CORS (Ajuste conforme necessidades de segurança)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-# Instância do Database para operações assíncronas
-database = Database(DATABASE_URL)
+# Rota de health check
+@app.get("/health", tags=["Monitoramento"])
+async def health_check():
+    """
+    Endpoint para verificar o status da API e conexão com o banco
+    """
+    db_status = await check_db_connection()
+    return {
+        "status": "online",
+        "database": "connected" if db_status else "disconnected",
+        "version": settings.VERSION
+    }
 
-# Base para os modelos SQLAlchemy
-Base = declarative_base()
+# Rota raiz
+@app.get("/", tags=["Root"])
+async def root():
+    """
+    Endpoint raiz com informações básicas da API
+    """
+    return {
+        "message": f"Bem-vindo à {settings.PROJECT_NAME}",
+        "docs": "/docs",
+        "version": settings.VERSION
+    }
 
-# Dependência para injeção de sessão síncrona
-def get_db():
-    """
-    Fornece uma sessão de banco de dados para operações síncronas.
-    Deve ser usada em rotas que não são assíncronas.
-    """
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+# Inclusão dos routers
+app.include_router(
+    auth.router,
+    prefix="/auth",
+    tags=["Autenticação"]
+)
 
-# Dependência para conexão assíncrona
-async def get_async_db():
-    """
-    Fornece uma conexão de banco de dados para operações assíncronas.
-    Deve ser usada em rotas assíncronas.
-    """
-    await database.connect()
-    try:
-        yield database
-    finally:
-        await database.disconnect()
-
-async def create_tables():
-    """
-    Cria todas as tabelas no banco de dados.
-    Deve ser chamada na inicialização da aplicação.
-    """
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-
-async def check_db_connection():
-    """
-    Verifica se a conexão com o banco de dados está ativa.
-    Útil para health checks.
-    """
-    try:
-        await database.execute("SELECT 1")
-        return True
-    except Exception:
-        return False
-    
+app.include_router(
+    todos.router,
+    prefix="/todos",
+    tags=["Tarefas"]
+)
