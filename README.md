@@ -1,6 +1,6 @@
 # API de tarefas (*to-do list*)
 
-Projeto desenvolvido com o propósito de aprendizado.
+Projeto em desenvolvimento com o propósito de aprendizado.
 
 ## Para rodar
 
