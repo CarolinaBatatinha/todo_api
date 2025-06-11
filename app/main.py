@@ -18,22 +18,22 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verifica se a senha corresponde ao hash"""
+    # Verifica se a senha corresponde ao hash
     return pwd_context.verify(plain_password, hashed_password)
 
 def get_password_hash(password: str) -> str:
-    """Gera hash da senha para armazenamento seguro"""
+    # Gera hash da senha para armazenamento seguro
     return pwd_context.hash(password)
 
 def create_access_token(data: dict) -> str:
-    """Cria token JWT com tempo de expiração"""
+    # Cria token JWT com tempo de expiração
     to_encode = data.copy()
     expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 async def get_user(db: AsyncSession, email: str) -> User | None:
-    """Busca usuário por email no banco de dados"""
+    # Busca usuário por email no banco de dados
     result = await db.execute(select(User).where(User.email == email))
     return result.scalars().first()
 
@@ -41,7 +41,7 @@ async def get_current_user(
     token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_async_db)
 ) -> User:
-    """Valida token JWT e retorna usuário autenticado"""
+    # Valida token JWT e retorna usuário autenticado
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Credenciais inválidas",
@@ -65,16 +65,15 @@ async def get_current_user(
 # Rota raiz para verificação
 @app.get("/")
 async def root():
-    """Endpoint de verificação de saúde da API"""
+    # Endpoint de verificação de saúde da API
     return {"message": "API funcionando!", "status": "OK"}
 
-# Adicione esta rota de login diretamente aqui (ou mova para auth.py depois)
 @app.post("/auth/token")
 async def login_for_access_token(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: AsyncSession = Depends(get_async_db)
 ):
-    """Endpoint de login que retorna token JWT"""
+    # Endpoint de login que retorna token JWT
     user = await get_user(db, form_data.username)
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(

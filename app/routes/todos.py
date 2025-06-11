@@ -61,7 +61,7 @@ def read_todo(
     if not todo:
         raise HTTPException(
             status_code=404,
-            detail='TODO não encontrado ou você não tem permissão para acessá-lo'
+            detail='Tarefa não encontrada ou você não tem permissão para editá-la'
         )
     
     return todo
@@ -84,7 +84,7 @@ def update_todo(
     if not db_todo:
         raise HTTPException(
             status_code=404,
-            detail='TODO não encontrado ou você não tem permissão para editá-lo'
+            detail='Tarefa não encontrada ou você não tem permissão para editá-la'
         )
     
     # Atualiza os campos do TODO
@@ -113,7 +113,7 @@ def delete_todo(
     if not todo:
         raise HTTPException(
             status_code=404,
-            detail='TODO não encontrado ou você não tem permissão para removê-lo'
+            detail='Tarefa não encontrada ou você não tem permissão para editá-la'
         )
     
     # Remove o TODO

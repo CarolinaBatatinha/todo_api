@@ -6,7 +6,7 @@ from passlib.context import CryptContext
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from app.core.config import settings
-from app.core.database import get_async_db  # Importe a sessão assíncrona
+from app.core.database import get_async_db 
 from app.models.user import User
 
 # Configurações de segurança
@@ -33,7 +33,7 @@ async def get_user(db: AsyncSession, email: str) -> User | None:
 # Valida token JWT e retorna usuário autenticado (versão assíncrona)
 async def get_current_user(
     token: str = Depends(oauth2_scheme),
-    db: AsyncSession = Depends(get_async_db)  # Use a sessão assíncrona
+    db: AsyncSession = Depends(get_async_db) 
 ) -> User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -47,7 +47,7 @@ async def get_current_user(
         if not email:
             raise credentials_exception
             
-        user = await get_user(db, email=email)  # Aguarde a função assíncrona
+        user = await get_user(db, email=email) 
         if not user:
             raise credentials_exception
             
