@@ -1,92 +1,86 @@
-from fastapi import FastAPI, status
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from contextlib import asynccontextmanager
-from app.routes import auth, todos
-from app.core.database import create_tables, check_db_connection
+from datetime import datetime, timedelta
+from fastapi import Depends, HTTPException, status, FastAPI
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from jose import JWTError, jwt
+from passlib.context import CryptContext
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+
 from app.core.config import settings
-import logging
+from app.core.database import get_async_db
+from app.models.user import User
 
-# Configuração básica de logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Cria a aplicação FastAPI
+app = FastAPI()
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    try:
-        logger.info("Iniciando aplicação...")
-        
-        # Criar tabelas no banco de dados
-        await create_tables()
-        
-        # Verificar conexão com o banco
-        if not await check_db_connection():
-            logger.error("Falha na conexão com o banco de dados")
-            raise RuntimeError("Não foi possível conectar ao banco de dados")
-            
-        logger.info("Conexão com o banco de dados estabelecida com sucesso")
-        
-        yield
-        
-    except Exception as e:
-        logger.error(f"Erro durante a inicialização: {str(e)}")
-        raise
-    finally:
-        logger.info("Encerrando aplicação...")
+# Configurações de segurança
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
 
-app = FastAPI(
-    title=settings.PROJECT_NAME,
-    description=settings.PROJECT_DESCRIPTION,
-    version=settings.VERSION,
-    lifespan=lifespan,
-    docs_url="/docs",
-    redoc_url="/redoc",
-    openapi_url="/openapi.json"
-)
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verifica se a senha corresponde ao hash"""
+    return pwd_context.verify(plain_password, hashed_password)
 
-# Configuração de CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+def get_password_hash(password: str) -> str:
+    """Gera hash da senha para armazenamento seguro"""
+    return pwd_context.hash(password)
 
-@app.get("/health", tags=["Monitoramento"])
-async def health_check():
-    
-    # Endpoint para verificar o status da API
-    db_healthy = await check_db_connection()
-    return JSONResponse(
-        status_code=status.HTTP_200_OK if db_healthy else status.HTTP_503_SERVICE_UNAVAILABLE,
-        content={
-            "status": "online" if db_healthy else "degraded",
-            "database": "connected" if db_healthy else "disconnected",
-            "version": settings.VERSION
-        }
+def create_access_token(data: dict) -> str:
+    """Cria token JWT com tempo de expiração"""
+    to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+async def get_user(db: AsyncSession, email: str) -> User | None:
+    """Busca usuário por email no banco de dados"""
+    result = await db.execute(select(User).where(User.email == email))
+    return result.scalars().first()
+
+async def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_async_db)
+) -> User:
+    """Valida token JWT e retorna usuário autenticado"""
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Credenciais inválidas",
+        headers={"WWW-Authenticate": "Bearer"},
     )
 
-@app.get("/", tags=["Root"])
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        email: str = payload.get("sub")
+        if not email:
+            raise credentials_exception
+
+        user = await get_user(db, email=email)
+        if not user:
+            raise credentials_exception
+
+        return user
+    except JWTError:
+        raise credentials_exception
+
+# Rota raiz para verificação
+@app.get("/")
 async def root():
-    # Endpoint raiz da API
-    return {
-        "message": f"Bem-vindo à {settings.PROJECT_NAME}",
-        "docs": "/docs",
-        "redoc": "/redoc",
-        "version": settings.VERSION
-    }
+    """Endpoint de verificação de saúde da API"""
+    return {"message": "API funcionando!", "status": "OK"}
 
-# Rotas de autenticação
-app.include_router(
-    auth.router,
-    prefix="/auth",
-    tags=["Autenticação"]
-)
-
-# Rotas de TODOs
-app.include_router(
-    todos.router,
-    prefix="/todos",
-    tags=["Tarefas"]
-)
+# Adicione esta rota de login diretamente aqui (ou mova para auth.py depois)
+@app.post("/auth/token")
+async def login_for_access_token(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: AsyncSession = Depends(get_async_db)
+):
+    """Endpoint de login que retorna token JWT"""
+    user = await get_user(db, form_data.username)
+    if not user or not verify_password(form_data.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Email ou senha incorretos",
+        )
+    
+    access_token = create_access_token(data={"sub": user.email})
+    return {"access_token": access_token, "token_type": "bearer"}
