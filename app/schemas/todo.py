@@ -9,7 +9,8 @@ class TodoCreate(TodoBase):
 
 class Todo(TodoBase):
     id: int
-    completed: bool
+    title: str
+    description: str | None
     owner_id: int
 
     class Config:

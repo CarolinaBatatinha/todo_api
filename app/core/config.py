@@ -5,7 +5,7 @@ class Settings(BaseSettings):
     ASYNC_DATABASE_URL: str 
     SECRET_KEY: str
     ALGORITHM: str
-    ACCESS_TOKEN_EXPIRE_MINUTES: int
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     
     class Config:
         env_file = '.env'
