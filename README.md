@@ -6,11 +6,11 @@ Projeto ***em construção*** com o propósito de aprendizado em **FastAPI**, ar
 
 ## 🚀 Funcionalidades
 
-- ✅ Cadastro e autenticação de usuários (JWT)
+- ✅ Cadastro e autenticação de usuários (JWT) - *em andamento*
 - 📝 CRUD de tarefas (create, read, update, delete)
 - 🔐 Rotas protegidas por autenticação
 - 🗃️ Integração com banco de dados PostgreSQL via SQLAlchemy
-- ✅ Testes unitários com cobertura (*a desenvolver*)
+- ✅ Testes unitários com cobertura - *a desenvolver*
 
 ---
 

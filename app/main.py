@@ -49,6 +49,11 @@ async def get_user(db: AsyncSession, email: str) -> User | None:
     return result.scalars().first()
 
 
+todo_list = [
+    {"id": 1, "tarefa": "Comprar pão", "feito": False},
+    {"id": 2, "tarefa": "Estudar FastAPI", "feito": True},
+    {"id": 3, "tarefa": "Fazer exercícios", "feito": False},
+]
 # Rota raiz de teste
 @app.get("/")
 async def root():
@@ -70,6 +75,11 @@ async def login_for_access_token(
 
     access_token = create_access_token(data={'sub': user.email})
     return {"access_token": access_token, 'token_type': 'bearer'}
+
+# Nova rota: GET /todos
+@app.get("/todos")
+def get_todos():
+    return todo_list
 
 # Endpoint para frontend
 app.mount("/static", StaticFiles(directory='static'), name='static')
